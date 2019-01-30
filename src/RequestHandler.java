@@ -15,7 +15,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
 
+import javax.sound.sampled.AudioInputStream;
 import javax.xml.ws.http.HTTPException;
+
+import marytts.LocalMaryInterface;
+import marytts.MaryInterface;
+import marytts.exceptions.MaryConfigurationException;
+import marytts.exceptions.SynthesisException;
+import marytts.util.data.audio.MaryAudioUtils;
 
 public class RequestHandler implements Runnable{
 	
@@ -24,7 +31,7 @@ public class RequestHandler implements Runnable{
 	static final File WEB_ROOT = new File("../ttsmessenger/");
 	static final String DEFAULT_FILE = "index.html";
 	
-	
+	final String lineSeparatorRegex = "\r\n?|\n";
 	
 	static Room testRoom = new Room();
 	
@@ -46,6 +53,8 @@ public class RequestHandler implements Runnable{
 			return "image/x-icon";
 		else if (fileRequested.endsWith(".png"))
 			return "image/png";
+		else if (fileRequested.endsWith(".wav"))
+			return "audio/wav";
 		else
 			return "text/plain";
 		
@@ -135,19 +144,128 @@ public class RequestHandler implements Runnable{
 		return response;
 	}
 	
-	private void runCommand(String[] body) throws HTTPException{
-		String command = body[0];
+	public static void createNecessaryDirectories(String filePath){
+		File file = new File(filePath);
+		File directory = new File(file, "..");
+		if (!(directory.isDirectory())){
+			directory.mkdirs();
+		}
+	}
+	
+	public static void textToSpeechFile(String path, String text){
+		MaryInterface marytts = null;
+		AudioInputStream audio = null;
+		try {
+			marytts = new LocalMaryInterface();
+		} catch (MaryConfigurationException e) {
+			e.printStackTrace();
+		}
+		try {
+			audio = marytts.generateAudio(text);
+		} catch (SynthesisException e1) {
+			e1.printStackTrace();
+		}
+		double[] samples = MaryAudioUtils.getSamplesAsDoubleArray(audio);
+		double[] output = new double[2*samples.length];
+		for (int i = 0; i < samples.length; i++){
+			//output[2*i] = samples[i];
+			//output[2*i+1] = samples[i];
+			if (i > samples.length/2){
+				//double sign = Math.signum(samples[i]);
+				//samples[i] *= sign * Math.sqrt(Math.abs(samples[i])) * 2;
+			}
+		}
+		createNecessaryDirectories(path);
+		try {
+			MaryAudioUtils.writeWavFile(samples, path, audio.getFormat());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void createMessage(HttpRequest request, HttpResponse response){
+		int roomIndex = Integer.parseInt(request.headers.getProperty("Room"));
+		Room room = null;
+		if (roomIndex == 0){
+			room = testRoom;
+		}else{
+			//TODO actually get the right room
+			room = testRoom;
+		}
+		int messageIndex = room.messages.size();
+		
+		Message testMessage = new Message();
+		testMessage.basicText = request.body;
+		
+		String ttstext = testMessage.basicText;
+		
+		String audioPath = "audio/" + roomIndex + "/" + messageIndex + ".wav";
+		File dir = new File(WEB_ROOT, audioPath);
+		try {
+			textToSpeechFile(dir.getCanonicalPath(), ttstext);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		testMessage.audioPath = audioPath;
+		
+		testRoom.addMessage(testMessage);
+		verboseOutput += "testRoom updated, is now \n";
+		verboseOutput += testRoom.toString();
+		response.setCode(200);
+		response.httpStatusMessage = "Create message ok";
+	}
+	
+	private void getMessage(HttpRequest request, HttpResponse response){
+		String roomString = request.headers.getProperty("Room");
+		if (roomString == null){
+			response.setCode(400);
+			verboseOutput += "getMessage Room header not found\n";
+			response.httpStatusMessage = "getMessage Room header not found";
+		}else{
+			int roomIndex = Integer.parseInt(roomString);
+			Room room = null;
+			if (roomIndex == 0){
+				room = testRoom;
+			}else{
+				//TODO get actual room from hash table
+				room = testRoom;
+			}
+			String messageIndexString = request.headers.getProperty("Message-Index");
+			if (messageIndexString == null){
+				//return 400
+				response.setCode(400);
+				verboseOutput += "getMessage Message-Index header not found\n";
+				response.httpStatusMessage = "getMessage Message-Index header not found";
+			}else{
+				int messageIndex = Integer.parseInt(messageIndexString);
+				if (messageIndex >= room.messages.size()){
+					response.setCode(200);
+					verboseOutput += "getMessage not yet available on this index\n";
+					response.httpStatusMessage = "getMessage not yet available on this index";
+					response.headers.setProperty("Get-Message-Response", "unavailable");
+				}else{
+					Message message = room.messages.get(messageIndex);
+					String text = message.basicText;
+					response.body = text;
+					response.useFileBody = false;
+					response.setCode(200);
+					verboseOutput += "getMessage found a message\n";
+					response.httpStatusMessage = "getMessage found a message";
+					response.headers.setProperty("Get-Message-Response", "success");
+					response.headers.setProperty("Audio", message.audioPath);
+					response.headers.setProperty("Message-Index", messageIndexString);
+				}
+			}
+		}
+	}
+	
+	private void runCommand(String command, HttpRequest request, HttpResponse response){
 		switch(command){
 		case "createMessage":
-			Message testMessage = new Message();
-			String line = "";
-			for (int i = 1; i < body.length; i++){
-				line = body[i];
-				testMessage.basicText += line + "\n";
-			}
-			testRoom.addMessage(testMessage);
-			verboseOutput += "testRoom updated, is now \n";
-			verboseOutput += testRoom.toString();
+			createMessage(request, response);
+			break;
+		case "getMessage":
+			getMessage(request, response);
 			break;
 		default:
 			throw new HTTPException(404);
@@ -157,6 +275,23 @@ public class RequestHandler implements Runnable{
 	private HttpResponse handlePostRequest(HttpRequest request){
 		verboseOutput += "handlePostRequest\n";
 		HttpResponse response = new HttpResponse();
+		String command = request.headers.getProperty("Command");
+		if (command == null){
+			//malformed request 400
+			response.setCode(400);
+			verboseOutput += "POST command header not found\n";
+			response.httpStatusMessage = "POST command header not found";
+		}else{
+			try{
+				runCommand(command, request, response);
+			}catch(HTTPException e){
+				response.setCode(404);
+				verboseOutput += "Unknown post command\n";
+				response.httpStatusMessage = "Unknown post command";
+			}
+		}
+		return response;
+		/*
 		String file = request.fileRequested;
 		switch(file){
 		case "/command":
@@ -188,7 +323,7 @@ public class RequestHandler implements Runnable{
 		}
 		response.addHeader("Server", "cstevenson3");
 		response.addHeader("Date", (new Date()).toString());
-		return response;
+		*/
 	}
 	
 	private void handleRequest(HttpRequest request, PrintWriter headerOut, BufferedOutputStream dataOut){

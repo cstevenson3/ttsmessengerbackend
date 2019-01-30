@@ -17,6 +17,7 @@ public class HttpResponse extends HttpMessage{
 		super();
 		httpStatusCode = 500;
 		httpStatusMessage = "Response not updated correctly";
+		fileBody = new byte[0];
 		useFileBody = true;
 	}
 	
@@ -54,7 +55,6 @@ public class HttpResponse extends HttpMessage{
 			bodyBytes = fileBody;
 		}else{
 			bodyBytes = body.getBytes();
-
 		}
 		headers.setProperty("Content-Length", Integer.toString(bodyBytes.length));
 		
