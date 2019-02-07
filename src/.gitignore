@@ -7,3 +7,16 @@
 /HttpRequest.class
 /HttpMessage.class
 /HttpResponse.class
+/TextToSpeech.class
+/SecureFileSystem.class
+/SafeFileSystem.class
+/WavFile$IOState.class
+/WavFile.class
+/WavFileException.class
+/SampledAudio.class
+/IBMTextToSpeech.class
+/TextToSpeechInterface.class
+/IBMTextToSpeech$1.class
+/ByteToWav.class
+/AudioUtils.class
+/wavIO.class

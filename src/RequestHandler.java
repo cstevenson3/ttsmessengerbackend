@@ -144,43 +144,8 @@ public class RequestHandler implements Runnable{
 		return response;
 	}
 	
-	public static void createNecessaryDirectories(String filePath){
-		File file = new File(filePath);
-		File directory = new File(file, "..");
-		if (!(directory.isDirectory())){
-			directory.mkdirs();
-		}
-	}
-	
-	public static void textToSpeechFile(String path, String text){
-		MaryInterface marytts = null;
-		AudioInputStream audio = null;
-		try {
-			marytts = new LocalMaryInterface();
-		} catch (MaryConfigurationException e) {
-			e.printStackTrace();
-		}
-		try {
-			audio = marytts.generateAudio(text);
-		} catch (SynthesisException e1) {
-			e1.printStackTrace();
-		}
-		double[] samples = MaryAudioUtils.getSamplesAsDoubleArray(audio);
-		double[] output = new double[2*samples.length];
-		for (int i = 0; i < samples.length; i++){
-			//output[2*i] = samples[i];
-			//output[2*i+1] = samples[i];
-			if (i > samples.length/2){
-				//double sign = Math.signum(samples[i]);
-				//samples[i] *= sign * Math.sqrt(Math.abs(samples[i])) * 2;
-			}
-		}
-		createNecessaryDirectories(path);
-		try {
-			MaryAudioUtils.writeWavFile(samples, path, audio.getFormat());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	public static double clamp(double val, double min, double max) {
+	    return Math.max(min, Math.min(max, val));
 	}
 	
 	private void createMessage(HttpRequest request, HttpResponse response){
@@ -199,14 +164,35 @@ public class RequestHandler implements Runnable{
 		
 		String ttstext = testMessage.basicText;
 		
-		String audioPath = "audio/" + roomIndex + "/" + messageIndex + ".wav";
-		File dir = new File(WEB_ROOT, audioPath);
+		String ttsPath = "audio/" + roomIndex + "/" + messageIndex + ".wav";
+		String timingsPath = "audio/" + roomIndex + "/" + messageIndex + ".txt";
+		File dir = new File(WEB_ROOT, ttsPath);
+		File timingsDir = new File(WEB_ROOT, timingsPath);
 		try {
-			textToSpeechFile(dir.getCanonicalPath(), ttstext);
+			TextToSpeechInterface.timestampedTextToSpeechFile(dir.getCanonicalPath(), timingsDir.getCanonicalPath(), ttstext);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		testMessage.audioPath = audioPath;
+		
+		SampledAudio audio = null;
+		try {
+			audio = TextToSpeechInterface.wavToSampledAudio(dir.getCanonicalPath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		for (int i = 0; i < audio.samples.length; i++){
+			audio.samples[i] = clamp(audio.samples[i] * 1000, -1, 1);
+			audio.samples[i] = audio.samples[i] / 20;
+		}
+		
+		String outputPath = "audio/" + roomIndex + "/" + messageIndex + "edited.wav";
+		File editdir = new File(WEB_ROOT, outputPath);
+		try {
+			TextToSpeechInterface.sampledAudioToWav(editdir.getCanonicalPath(), audio);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		testMessage.audioPath = outputPath;
 		
 		testRoom.addMessage(testMessage);
 		verboseOutput += "testRoom updated, is now \n";
@@ -388,8 +374,8 @@ public class RequestHandler implements Runnable{
 			}
 			
 			verboseOutput += ("Connection closed\n\n");
-			System.out.println(verboseOutput);
-			System.out.println();
+			//System.out.println(verboseOutput);
+			//System.out.println();
 			System.out.flush();
 		}
 	}

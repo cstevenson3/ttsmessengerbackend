@@ -120,12 +120,40 @@ public class HTTPServer {
 		}
 	}
 	
+	public static double clamp(double val, double min, double max) {
+	    return Math.max(min, Math.min(max, val));
+	}
+	
 	public static void main(String[] args) {
 		//textToSpeechFile("0/0.wav", "The FitnessGram™ Pacer Test is a multistage aerobic capacity test that progressively gets more difficult as it continues. The 20 meter pacer test will begin in 30 seconds. Line up at the start. The running speed starts slowly, but gets faster each minute after you hear this signal. [beep] A single lap should be completed each time you hear this sound. [ding] Remember to run in a straight line, and run as long as possible. The second time you fail to complete a lap before the sound, your test is over. The test will begin on the word start. On your mark, get ready, start.");
 		//bytesStringTest();
 		//testReader();
-		server();
+		
 		//Room room = new Room();
 		//room.test();
+		
+		//TextToSpeech.maryTTSbasic("py/pee.wav", "hello hello hello");
+		
+		//byte[] bytes = new byte[]{1};
+		//System.out.println(bytes.length);
+		
+		//SampledAudio audio = TextToSpeechInterface.wavToSampledAudio("../ttsdata/tests/ibm30.wav");
+		
+		//for (int i = 0; i < audio.samples.length; i++){
+			//audio.samples[i] = clamp(audio.samples[i] * 1000, -1, 1);
+			//audio.samples[i] = audio.samples[i] / 100;
+		//}
+		//TextToSpeech.sampledAudioToWav("py/hellonew.wav", audio);
+		
+		//IBMTextToSpeech tts = new IBMTextToSpeech();
+		//tts.timestampedTtsToWav("../ttsdata/tests/ibm30.wav", "../ttsdata/tests/ibm22.txt", "Hello World");
+		//IBMTextToSpeech.basicTtsToWav("../ttsdata/tests/ibm20.wav", "Hello World");
+
+		//wavIO w = new wavIO();
+		//w.setPath("../ttsdata/tests/ibm20.wav");
+		//w.read();
+		//System.out.println(w.toString());
+		
+		server();
 	}
 }
