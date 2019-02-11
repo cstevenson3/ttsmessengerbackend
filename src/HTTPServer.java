@@ -146,7 +146,7 @@ public class HTTPServer {
 		//TextToSpeech.sampledAudioToWav("py/hellonew.wav", audio);
 		
 		//IBMTextToSpeech tts = new IBMTextToSpeech();
-		//tts.timestampedTtsToWav("../ttsdata/tests/ibm30.wav", "../ttsdata/tests/ibm22.txt", "Hello World");
+		//tts.timestampedTtsToWav("../ttsdata/tests/ibm40.wav", "../ttsdata/tests/ibm40.txt", "Hello <mark name=\"test\"/> World");
 		//IBMTextToSpeech.basicTtsToWav("../ttsdata/tests/ibm20.wav", "Hello World");
 
 		//wavIO w = new wavIO();
@@ -155,5 +155,13 @@ public class HTTPServer {
 		//System.out.println(w.toString());
 		
 		server();
+		
+		//System.out.println(RequestHandler.preprocessText("The<> name of *Kelvin* Qi Gong is *dumb* like him *woo*"));
+		
+		/*SampledAudio ub = TextToSpeechInterface.wavToSampledAudio("../ttsmessenger/audio/0/0.wav");
+		SampledAudio thenword = TextToSpeechInterface.wavToSampledAudio("../ttsdata/content/thenword.wav");
+		SampledAudio inserted = ub.insertOtherSampledAudio(1.198, thenword);
+		TextToSpeechInterface.sampledAudioToWav("../ttsdata/content/ultralight2.wav", inserted);
+		System.out.println(ub.getDuration());*/
 	}
 }

@@ -21,6 +21,7 @@ import okhttp3.WebSocket;
 
 import com.ibm.watson.developer_cloud.service.security.IamOptions;
 import com.ibm.watson.developer_cloud.text_to_speech.v1.TextToSpeech;
+import com.ibm.watson.developer_cloud.text_to_speech.v1.model.MarkTiming;
 import com.ibm.watson.developer_cloud.text_to_speech.v1.model.Marks;
 import com.ibm.watson.developer_cloud.text_to_speech.v1.model.SynthesizeOptions;
 import com.ibm.watson.developer_cloud.text_to_speech.v1.model.Timings;
@@ -150,7 +151,6 @@ public class IBMTextToSpeech {
 		.text(text)
 		.accept("audio/wav")
 		.voice("en-US_AllisonVoice")
-		.timings(list)
 		.build();
 
 		WebSocket webSocket =
@@ -176,7 +176,14 @@ public class IBMTextToSpeech {
 			@Override
 			public void onConnected() {
 				// TODO Auto-generated method stub
-				
+				Properties props = new Properties();
+				try {
+					props.store(new FileOutputStream(new File(timingsPath)), "");
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 
 			@Override
@@ -198,9 +205,25 @@ public class IBMTextToSpeech {
 			}
 
 			@Override
-			public void onMarks(Marks arg0) {
-				// TODO Auto-generated method stub
-				
+			public void onMarks(Marks marks) {
+				Properties props = new Properties();
+				try {
+					props.load(new FileInputStream(new File(timingsPath)));
+				} catch (FileNotFoundException e1) {
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				for (MarkTiming mark : marks.getMarks()){
+					props.setProperty(mark.getMark(), Double.toString(mark.getTime()));
+				}
+				try {
+					props.store(new FileOutputStream(new File(timingsPath)), "");
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 
 			@Override

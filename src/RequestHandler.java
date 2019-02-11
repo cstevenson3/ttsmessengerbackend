@@ -1,9 +1,12 @@
 package src;
 
+import groovyjarjarantlr.collections.List;
+
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -13,7 +16,9 @@ import java.net.Socket;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Properties;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.xml.ws.http.HTTPException;
@@ -148,6 +153,158 @@ public class RequestHandler implements Runnable{
 	    return Math.max(min, Math.min(max, val));
 	}
 	
+	private static String asteriskToMark(String input, int startIndex){
+		for (int i = 0; i < input.length(); i++){
+			if (input.charAt(i) == "*".charAt(0)){
+				String before = input.substring(0, i);
+				String after = input.substring(i + 1, input.length());
+				String result = before + "<mark name=\"" + "asterisk" + startIndex + "\"/>" + asteriskToMark(after, startIndex + 1);
+				return result;
+			}
+		}
+		return input;
+	}
+	
+	private static String atToMark(String input, int startIndex){
+		for (int i = 0; i < input.length(); i++){
+			if (input.charAt(i) == "@".charAt(0)){
+				String before = input.substring(0, i);
+				String after = input.substring(i + 1, input.length());
+				String result = before + "<mark name=\"" + "at" + startIndex + "\"/>" + atToMark(after, startIndex + 1);
+				return result;
+			}
+		}
+		return input;
+	}
+	
+	public static String preprocessText(String text){
+		System.out.println("Start text:");
+		System.out.println(text);
+		//remove < and >
+		String temp1 = text.replace("<", "");
+		String temp2 = temp1.replace(">", "");
+		
+		//replace asterix with <mark name="asterisk#"/>
+		
+		String temp3 = asteriskToMark(temp2, 0);
+		
+		//replace @ with <mark name="at#"/>
+		
+		String temp4 = atToMark(temp3, 0);
+		
+		//append "end" mark to end of synthesis
+		String result = temp4 + "<mark name=\"end\"/>";
+		
+		System.out.println("Result text:");
+		System.out.println(result);
+		return result;
+	}
+	
+	private static void processEffects(SampledAudio input, String timingsPath){
+		File timingsDir = new File(WEB_ROOT, timingsPath);
+		Properties timings = new Properties();
+		try {
+			timings.load(new FileInputStream(timingsDir));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		double endTime = Double.parseDouble(timings.getProperty("end"));
+		int sampleLength = input.samples.length;
+		
+		double samplesPerTime = sampleLength / endTime;
+		//System.out.println("Samples per time: " + samplesPerTime);
+		
+		//multiply time by samplesPerTime to get sample range
+		/*
+		for(int i = (int) ((1.0/3.0) * samplesPerTime); i < (int) ((2.0/3.0) * samplesPerTime); i++){
+			if (i >= input.samples.length){
+				break;
+			}
+			input.samples[i] = clamp(input.samples[i] * 1000, -1, 1);
+			input.samples[i] = input.samples[i] / 100;
+		}
+		*/
+		//go through asterisk keys until not found
+		ArrayList<SampleEffect> effects = new ArrayList<SampleEffect>();
+		
+		double startTimeTemp = 0;
+		int index = 0;
+		String value = "";
+		while ((value = timings.getProperty("asterisk" + index)) != null){
+			if ((index % 2) == 0){
+				startTimeTemp = Double.parseDouble(value);
+			}else{
+				SampleEffect ow = new SampleEffect();
+				ow.startTime = startTimeTemp;
+				ow.endTime = Double.parseDouble(value);
+				ow.effect = "loud";
+				effects.add(ow);
+			}
+			index++;
+		}
+		
+		for (SampleEffect effect : effects){
+			switch(effect.effect){
+			case "loud":
+				System.out.println("Applying loud effect from " + effect.startTime + " to " + effect.endTime);
+				for(int i = (int) (effect.startTime * samplesPerTime); i < (int) (effect.endTime * samplesPerTime); i++){
+					if (i >= input.samples.length){
+						break;
+					}
+					input.samples[i] = clamp(input.samples[i] * 100, -1, 1);
+					input.samples[i] = input.samples[i] / 2;
+				}
+				break;
+			default:
+				System.out.println("Effect not recognised");
+				break;
+			}
+			
+		}
+		
+		// insert thenword
+		
+		SampledAudio thenword = null;
+		try {
+			File thenwordDir = new File("../ttsdata/content/thenword.wav");
+			thenword = TextToSpeechInterface.wavToSampledAudio(thenwordDir.getCanonicalPath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		ArrayList<SampleEffect> effects2 = new ArrayList<SampleEffect>();
+		
+		int index2 = 0;
+		String value2 = "";
+		while ((value2 = timings.getProperty("at" + index2)) != null){
+			SampleEffect ow = new SampleEffect();
+			ow.startTime = Double.parseDouble(value2);
+			ow.effect = "thenword";
+			effects2.add(ow);
+			index2++;
+		}
+		
+		for (SampleEffect effect : effects2){
+			switch(effect.effect){
+			case "thenword":
+				System.out.println("Applying thenword effect from " + effect.startTime);
+				SampledAudio newInput = input.insertOtherSampledAudio(effect.startTime, thenword);
+				input.samples = newInput.samples;
+				input.bits = newInput.bits;
+				input.numChannels = newInput.numChannels;
+				input.sampleRate = newInput.sampleRate;
+				input.numFrames = newInput.numFrames;
+				break;
+			default:
+				System.out.println("Effect not recognised");
+				break;
+			}
+		}
+	}
+	
 	private void createMessage(HttpRequest request, HttpResponse response){
 		int roomIndex = Integer.parseInt(request.headers.getProperty("Room"));
 		Room room = null;
@@ -162,7 +319,7 @@ public class RequestHandler implements Runnable{
 		Message testMessage = new Message();
 		testMessage.basicText = request.body;
 		
-		String ttstext = testMessage.basicText;
+		String ttstext = preprocessText(testMessage.basicText);
 		
 		String ttsPath = "audio/" + roomIndex + "/" + messageIndex + ".wav";
 		String timingsPath = "audio/" + roomIndex + "/" + messageIndex + ".txt";
@@ -180,10 +337,8 @@ public class RequestHandler implements Runnable{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		for (int i = 0; i < audio.samples.length; i++){
-			audio.samples[i] = clamp(audio.samples[i] * 1000, -1, 1);
-			audio.samples[i] = audio.samples[i] / 20;
-		}
+		
+		processEffects(audio, timingsPath);
 		
 		String outputPath = "audio/" + roomIndex + "/" + messageIndex + "edited.wav";
 		File editdir = new File(WEB_ROOT, outputPath);
