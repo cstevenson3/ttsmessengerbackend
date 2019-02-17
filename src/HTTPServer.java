@@ -10,6 +10,8 @@ import java.util.Base64;
 
 import javax.sound.sampled.AudioInputStream;
 
+import org.apache.commons.io.FileUtils;
+
 import marytts.LocalMaryInterface;
 import marytts.MaryInterface;
 import marytts.exceptions.MaryConfigurationException;
@@ -163,5 +165,45 @@ public class HTTPServer {
 		SampledAudio inserted = ub.insertOtherSampledAudio(1.198, thenword);
 		TextToSpeechInterface.sampledAudioToWav("../ttsdata/content/ultralight2.wav", inserted);
 		System.out.println(ub.getDuration());*/
+		
+		/*
+		SampledAudio sa = TextToSpeechInterface.wavToSampledAudio("../ttsdata/content/thenword.wav");
+		
+		double max = 0;
+		double min = 0;
+		
+		for (int i = 0; i < sa.samples.length; i++){
+			double sample = sa.samples[i];
+			if (sample > max) max = sample;
+			if (sample < min) min = sample;
+		}
+		System.out.println("Max: " + max);
+		System.out.println("Min: " + min);
+		*/
+		/*
+		IBMTextToSpeech tts = new IBMTextToSpeech();
+		MarkedAudio test = null;
+		try {
+			test = tts.timestampedTtsToMarkedAudio("A");
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(0);
+		}
+		TextToSpeechInterface.sampledAudioToWav("hello300.wav", test.sa);
+		*//*
+		Message message = new Message();
+		message.audioPath = "audio path";
+		message.basicText = "basic text";
+		message.timeCreated = 123;
+		
+		VirtualFileSystem.store("messageTest.ser", message);
+		
+		Message retrieved = (Message) VirtualFileSystem.retrieve("messageTest.ser");
+		System.out.println(retrieved);
+		
+		Message retrieved2 = (Message) VirtualFileSystem.retrieve("doesntexist.ser");
+		System.out.println(retrieved2==null);
+		*/
+		
 	}
 }

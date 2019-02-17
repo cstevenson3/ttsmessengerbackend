@@ -1,5 +1,7 @@
 package src;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 
 public class SampledAudio {
@@ -91,6 +93,36 @@ public class SampledAudio {
 		bits = 16;
 	}
 	
+	public static double clamp(double val, double min, double max) {
+	    return Math.max(min, Math.min(max, val));
+	}
 	
+	public SampledAudio clone(){
+		SampledAudio sa = new SampledAudio();
+		sa.bits = bits;
+		sa.numChannels = numChannels;
+		sa.numFrames = numFrames;
+		sa.sampleRate = sampleRate;
+		sa.samples = samples.clone();
+		return sa;
+	}
+
 	
+	public void writeToWav(String path) {
+		VirtualFileSystem.createNecessaryDirectories(path);
+		File file = new File(path);
+		String canPath = null;
+		try {
+			canPath = file.getCanonicalPath();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		
+		try {
+			WavFile wavFile = WavFile.newWavFile(new File(canPath), numChannels, numFrames, bits, sampleRate);
+			wavFile.writeFrames(samples, numFrames);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

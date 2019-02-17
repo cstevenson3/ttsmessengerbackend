@@ -33,8 +33,9 @@ public class IBMTextToSpeech {
 	private static final String keysPath = "../ttsdata/keys.cfg";
 	private static final String usagePath = "../ttsdata/IBMUsage.txt";
 	private static final String url = "https://gateway-syd.watsonplatform.net/text-to-speech/api";
+	private static final int SAMPLE_RATE = 22050;
 	
-	private static IamOptions options;
+	private static IamOptions connectionOptions;
 	
 	private static Semaphore usageMutex = new Semaphore(1);
 	
@@ -59,13 +60,13 @@ public class IBMTextToSpeech {
 			}
 		}
 		String apiKey = keys.getProperty("tts1apikey");
-		options = new IamOptions.Builder().apiKey(apiKey).build();
+		connectionOptions = new IamOptions.Builder().apiKey(apiKey).build();
 		
 	}
 	
 	public static void basicTtsToWav(String path, String text){
-		TextToSpeech textToSpeech = new TextToSpeech(options);
-		textToSpeech = new TextToSpeech(options);
+		TextToSpeech textToSpeech = new TextToSpeech(connectionOptions);
+		textToSpeech = new TextToSpeech(connectionOptions);
 		textToSpeech.setEndPoint(url);
 		try {
 			SynthesizeOptions synthesizeOptions =
@@ -142,8 +143,8 @@ public class IBMTextToSpeech {
 		} catch (InterruptedException e2) {
 			e2.printStackTrace();
 		}
-		TextToSpeech textToSpeech = new TextToSpeech(options);
-		textToSpeech = new TextToSpeech(options);
+		TextToSpeech textToSpeech = new TextToSpeech(connectionOptions);
+		textToSpeech = new TextToSpeech(connectionOptions);
 		textToSpeech.setEndPoint(url);
 		List<String> list = Arrays.asList(new String[]{"words"});
 		SynthesizeOptions synthesizeOptions =
@@ -287,5 +288,103 @@ public class IBMTextToSpeech {
 		} finally{
 			usageMutex.release();
 		}
+	}
+
+	
+	Properties marks;
+	public MarkedAudio timestampedTtsToMarkedAudio(String text) throws Exception {
+		marks = new Properties();
+		try {
+			responseMutex.acquire();
+		} catch (InterruptedException e2) {
+			e2.printStackTrace();
+			throw new Exception();
+		}
+		TextToSpeech textToSpeech = new TextToSpeech(connectionOptions);
+		textToSpeech = new TextToSpeech(connectionOptions);
+		textToSpeech.setEndPoint(url);
+		SynthesizeOptions synthesizeOptions =
+		new SynthesizeOptions.Builder()
+		.text(text)
+		.accept("audio/wav;rate=" + Integer.toString(SAMPLE_RATE)) //endianness=big-endian;
+		.voice("en-US_AllisonVoice")
+		.build();
+
+		WebSocket webSocket =
+		textToSpeech.synthesizeUsingWebSocket(synthesizeOptions, new SynthesizeCallback() {
+
+			@Override
+			public void onAudioStream(byte[] samples) {
+				//write to byte stream
+				audio.write(samples, 0, samples.length);
+			}
+
+			@Override
+			public void onConnected() {
+
+			}
+
+			@Override
+			public void onContentType(String arg0) {
+
+			}
+
+			@Override
+			public void onDisconnected() {
+				responseMutex.release();
+			}
+
+			@Override
+			public void onError(Exception arg0) {
+				responseMutex.release();
+			}
+
+			@Override
+			public void onMarks(Marks inputMarks) {
+				for (MarkTiming mark : inputMarks.getMarks()){
+					marks.setProperty(mark.getMark(), Double.toString(mark.getTime()));
+				}
+			}
+
+			@Override
+			public void onTimings(Timings timings) {
+
+			}
+
+			@Override
+			public void onWarning(Exception arg0) {
+				responseMutex.release();
+			}
+		    
+		});
+		//wait for response callbacks to finish
+		try {
+			responseMutex.acquire();
+		} catch (InterruptedException e2) {
+			e2.printStackTrace();
+		}
+		System.out.println("Released");
+		webSocket.close(1000, "All necessary data acquired"); //might be irrelevant
+		
+		byte[] audioBytes = audio.toByteArray();
+
+		double[] samples = new double[audioBytes.length / 2];
+		
+		for (int i = 0; i < samples.length; i++){
+			double sample = (256.0 * ((double)audioBytes[i*2 + 1]) + ((double)audioBytes[i*2])) / 65536.0;
+			samples[i] = sample;
+		}
+		
+		SampledAudio sa = new SampledAudio();
+		sa.bits = 16;
+		sa.numChannels = 1;
+		sa.numFrames = samples.length;
+		sa.sampleRate = SAMPLE_RATE;
+		sa.samples = samples;
+		
+		MarkedAudio result = new MarkedAudio();
+		result.marks = marks;
+		result.sa = sa;
+		return result;
 	}
 }

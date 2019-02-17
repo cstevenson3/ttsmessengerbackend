@@ -348,5 +348,4 @@ a trimmed down version that most wav files adhere to.
 	{
 		return new byte[]{(byte)(data & 0xff),(byte)((data >>> 8) & 0xff)};
 	}
-
 }

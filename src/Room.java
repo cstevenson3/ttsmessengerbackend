@@ -1,19 +1,95 @@
 package src;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.Semaphore;
 
-public class Room {
-	public ArrayList<Message> messages;
+public class Room implements Serializable{
+	
+	private String displayName;
+	private String urlName;
+	private ArrayList<Message> messages;
+	private transient Semaphore editMutex;
+	
 	public Room(){
+		editMutex = new Semaphore(1);
 		messages = new ArrayList<Message>();
 	}
 	
-	public void addMessage(Message message){
-		//TODO use a better data structure and algorithm
-		int compareIndex = messages.size() - 1;
+	private void acquireMutex(Semaphore mutex){
+		if (mutex == null){
+			mutex = new Semaphore(1);
+		}
+		try {
+			mutex.acquire();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void releaseMutex(Semaphore mutex){
+		if (mutex == null){
+			mutex = new Semaphore(1);
+			return;
+		}
+		mutex.release();
+	}
+	
+	public String getDisplayName() {
+		return displayName;
+	}
+
+	public void setDisplayName(String displayName) {
+		acquireMutex(editMutex);
+		this.displayName = displayName;
+		releaseMutex(editMutex);
+	}
+
+	public String getUrlName() {
+		return urlName;
+	}
+
+	public void setUrlName(String urlName) {
+		acquireMutex(editMutex);
+		this.urlName = urlName;
+		releaseMutex(editMutex);
+	}
+
+	public Message getMessage(int index){
+		if (index >= messages.size()){
+			return null;
+		}else{
+			return messages.get(index);
+		}
+	}
+	
+	public String getDirectory(){
+		try {
+			return RequestHandler.WEB_ROOT.getCanonicalPath() + "/audio/" + urlName + "/" + urlName + ".ser";
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public synchronized void addMessage(Message message, SampledAudio sound){
+		
+		acquireMutex(editMutex);
+		
+		int index = messages.size();
+		String internalPath = "../ttsmessenger/audio/" + urlName + "/" + index + ".wav"; //TODO use file routing system for this
+		sound.writeToWav(internalPath);
+		String webPath = "audio/" + urlName + "/" + index + ".wav";
+		message.audioPath = webPath;
 		messages.add(message);
+		
+		releaseMutex(editMutex);
+		
+		//TODO use a better data structure and algorithm
+
 		//shuffle into time order
+		/*
 		while (compareIndex >= 0){
 			if (message.timeCreated >= messages.get(compareIndex).timeCreated){
 				break;
@@ -25,6 +101,14 @@ public class Room {
 			}
 			compareIndex --;
 		}
+		*/
+		
+	}
+	
+	public void writeToFile(){
+		acquireMutex(editMutex);
+		VirtualFileSystem.store(getDirectory(), this);
+		releaseMutex(editMutex);
 	}
 	
 	@Override
@@ -48,7 +132,7 @@ public class Room {
 		Message[] testMessages = new Message[]{message1, message2, message3, message4, message5, message6};
 		
 		for (Message message : testMessages){
-			addMessage(message);
+			//addMessage(message);
 		}
 		
 		for (Message output : messages){

@@ -1,6 +1,8 @@
 package src;
 
-public class Message {
+import java.io.Serializable;
+
+public class Message implements Serializable{
 	public long timeCreated;
 	public String basicText;
 	public String audioPath;
@@ -19,7 +21,7 @@ public class Message {
 	@Override
 	public String toString() {
 		return "Message [timeCreated=" + timeCreated + ", basicText=\n"
-				+ basicText + "]";
+				+ basicText + "\n" + "audioPath=" + audioPath + "]";
 	}
 	
 }

@@ -118,4 +118,15 @@ public class TextToSpeechInterface {
 			e.printStackTrace();
 		}
 	}
+
+	public static MarkedAudio textToSpeechMarkedAudio(String text) throws Exception {
+		IBMTextToSpeech ibmtts = new IBMTextToSpeech();
+		MarkedAudio result = null;
+		try {
+			result = ibmtts.timestampedTtsToMarkedAudio(text);
+		} catch (Exception e) {
+			throw e;
+		}
+		return result;
+	}
 }

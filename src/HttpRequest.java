@@ -26,6 +26,7 @@ public class HttpRequest extends HttpMessage{
 		String firstLine = "";
 		try {
 			firstLine = in.readLine();
+			if (firstLine == null) throw new IOException();
 		} catch (IOException e) {
 			verboseOutput += "IOException on reading first line of message\n";
 			throw e;

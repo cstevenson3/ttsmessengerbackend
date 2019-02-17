@@ -23,6 +23,7 @@ import java.util.Properties;
 import javax.sound.sampled.AudioInputStream;
 import javax.xml.ws.http.HTTPException;
 
+import src.SampleEffect.EffectName;
 import marytts.LocalMaryInterface;
 import marytts.MaryInterface;
 import marytts.exceptions.MaryConfigurationException;
@@ -240,7 +241,7 @@ public class RequestHandler implements Runnable{
 				SampleEffect ow = new SampleEffect();
 				ow.startTime = startTimeTemp;
 				ow.endTime = Double.parseDouble(value);
-				ow.effect = "loud";
+				ow.effect = EffectName.LOUD;
 				effects.add(ow);
 			}
 			index++;
@@ -248,7 +249,7 @@ public class RequestHandler implements Runnable{
 		
 		for (SampleEffect effect : effects){
 			switch(effect.effect){
-			case "loud":
+			case LOUD:
 				System.out.println("Applying loud effect from " + effect.startTime + " to " + effect.endTime);
 				for(int i = (int) (effect.startTime * samplesPerTime); i < (int) (effect.endTime * samplesPerTime); i++){
 					if (i >= input.samples.length){
@@ -282,14 +283,14 @@ public class RequestHandler implements Runnable{
 		while ((value2 = timings.getProperty("at" + index2)) != null){
 			SampleEffect ow = new SampleEffect();
 			ow.startTime = Double.parseDouble(value2);
-			ow.effect = "thenword";
+			ow.effect = EffectName.INSERT_THE_N_WORD;
 			effects2.add(ow);
 			index2++;
 		}
 		
 		for (SampleEffect effect : effects2){
 			switch(effect.effect){
-			case "thenword":
+			case INSERT_THE_N_WORD:
 				System.out.println("Applying thenword effect from " + effect.startTime);
 				SampledAudio newInput = input.insertOtherSampledAudio(effect.startTime, thenword);
 				input.samples = newInput.samples;
@@ -306,54 +307,28 @@ public class RequestHandler implements Runnable{
 	}
 	
 	private void createMessage(HttpRequest request, HttpResponse response){
-		int roomIndex = Integer.parseInt(request.headers.getProperty("Room"));
+		String roomName = request.headers.getProperty("Room");
 		Room room = null;
-		if (roomIndex == 0){
-			room = testRoom;
-		}else{
-			//TODO actually get the right room
-			room = testRoom;
-		}
-		int messageIndex = room.messages.size();
+		room = ServerState.retrieveRoom(roomName);
 		
-		Message testMessage = new Message();
-		testMessage.basicText = request.body;
-		
-		String ttstext = preprocessText(testMessage.basicText);
-		
-		String ttsPath = "audio/" + roomIndex + "/" + messageIndex + ".wav";
-		String timingsPath = "audio/" + roomIndex + "/" + messageIndex + ".txt";
-		File dir = new File(WEB_ROOT, ttsPath);
-		File timingsDir = new File(WEB_ROOT, timingsPath);
+		Message message = new Message();
+		message.basicText = request.body;
+		SampledAudio output = null;
+
 		try {
-			TextToSpeechInterface.timestampedTextToSpeechFile(dir.getCanonicalPath(), timingsDir.getCanonicalPath(), ttstext);
-		} catch (IOException e) {
+			output = TtsWithEffects.ttsWithEffects(message.basicText);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
-		SampledAudio audio = null;
-		try {
-			audio = TextToSpeechInterface.wavToSampledAudio(dir.getCanonicalPath());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		processEffects(audio, timingsPath);
-		
-		String outputPath = "audio/" + roomIndex + "/" + messageIndex + "edited.wav";
-		File editdir = new File(WEB_ROOT, outputPath);
-		try {
-			TextToSpeechInterface.sampledAudioToWav(editdir.getCanonicalPath(), audio);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		testMessage.audioPath = outputPath;
-		
-		testRoom.addMessage(testMessage);
-		verboseOutput += "testRoom updated, is now \n";
-		verboseOutput += testRoom.toString();
+		room.addMessage(message, output);
+		room.writeToFile();
+
 		response.setCode(200);
 		response.httpStatusMessage = "Create message ok";
+
+		verboseOutput += "Room: " + roomName +  "updated, is now \n";
+		verboseOutput += room.toString();
 	}
 	
 	private void getMessage(HttpRequest request, HttpResponse response){
@@ -363,14 +338,10 @@ public class RequestHandler implements Runnable{
 			verboseOutput += "getMessage Room header not found\n";
 			response.httpStatusMessage = "getMessage Room header not found";
 		}else{
-			int roomIndex = Integer.parseInt(roomString);
+
 			Room room = null;
-			if (roomIndex == 0){
-				room = testRoom;
-			}else{
-				//TODO get actual room from hash table
-				room = testRoom;
-			}
+			room = ServerState.retrieveRoom(roomString);
+					
 			String messageIndexString = request.headers.getProperty("Message-Index");
 			if (messageIndexString == null){
 				//return 400
@@ -379,13 +350,13 @@ public class RequestHandler implements Runnable{
 				response.httpStatusMessage = "getMessage Message-Index header not found";
 			}else{
 				int messageIndex = Integer.parseInt(messageIndexString);
-				if (messageIndex >= room.messages.size()){
+				Message message = room.getMessage(messageIndex);
+				if (message == null){
 					response.setCode(200);
 					verboseOutput += "getMessage not yet available on this index\n";
 					response.httpStatusMessage = "getMessage not yet available on this index";
 					response.headers.setProperty("Get-Message-Response", "unavailable");
 				}else{
-					Message message = room.messages.get(messageIndex);
 					String text = message.basicText;
 					response.body = text;
 					response.useFileBody = false;
