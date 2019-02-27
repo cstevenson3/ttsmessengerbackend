@@ -7,14 +7,26 @@ import java.util.concurrent.Semaphore;
 
 public class Room implements Serializable{
 	
+	@Override
+	public String toString() {
+		return "Room [displayName=" + displayName + ", urlName=" + urlName
+				+ ", accessByPassword=" + accessByPassword + ", accessByURL="
+				+ accessByURL + ", password=" + password + "]";
+	}
+
 	private String displayName;
 	private String urlName;
 	private ArrayList<Message> messages;
 	private transient Semaphore editMutex;
+	private ArrayList<String> users;
+	private boolean accessByPassword;
+	private boolean accessByURL;
+	private String password;
 	
 	public Room(){
 		editMutex = new Semaphore(1);
 		messages = new ArrayList<Message>();
+		users = new ArrayList<String>();
 	}
 	
 	private void acquireMutex(Semaphore mutex){
@@ -55,6 +67,32 @@ public class Room implements Serializable{
 		this.urlName = urlName;
 		releaseMutex(editMutex);
 	}
+	
+	public boolean userAllowed(String username){
+		return users.contains(username);
+	}
+	
+	public boolean accessAllowed(String password, String user){
+		//ßSystem.out.println(this.toString());
+		
+		if(accessByURL){
+			return true;
+		}else{
+			if(accessByPassword){
+				if(password == null){
+					
+				}else{
+					if(password.equals(this.password)){
+						return true;
+					}
+				}
+			}
+			if (users.contains(user)){
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public Message getMessage(int index){
 		if (index >= messages.size()){
@@ -65,12 +103,7 @@ public class Room implements Serializable{
 	}
 	
 	public String getDirectory(){
-		try {
-			return RequestHandler.WEB_ROOT.getCanonicalPath() + "/audio/" + urlName + "/" + urlName + ".ser";
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return null;
+		return Room.getDirectory(this.urlName);
 	}
 	
 	public synchronized void addMessage(Message message, SampledAudio sound){
@@ -111,15 +144,7 @@ public class Room implements Serializable{
 		releaseMutex(editMutex);
 	}
 	
-	@Override
-	public String toString(){
-		String result = "Room:\n";
-		for (Message output : messages){
-			result += ((output.toString()) + "\n");
-		}
-		result += "End Room\n";
-		return result;
-	}
+	
 	
 	public void test(){
 		Message message1 = new Message(5, "5.1");
@@ -138,5 +163,26 @@ public class Room implements Serializable{
 		for (Message output : messages){
 			System.out.println(output.toString());
 		}
+	}
+
+	public void setAccessByURL(boolean accessByURL) {
+		this.accessByURL = accessByURL;
+	}
+
+	public void setAccessByPassword(boolean accessByPassword) {
+		this.accessByPassword = accessByPassword;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public static String getDirectory(String urlName) {
+		try {
+			return RequestHandler.WEB_ROOT.getCanonicalPath() + "/audio/" + urlName + "/" + urlName + ".ser";
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 }

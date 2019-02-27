@@ -6,6 +6,8 @@ public class Message implements Serializable{
 	public long timeCreated;
 	public String basicText;
 	public String audioPath;
+	public String displayUserName; //for a non-anonymous message (either a temp nickname or a registered user)
+	public String username; //for a message from a registered user (if this is set, displayUserName will be overridden with the user's current nickname)
 	
 	public Message(){
 		timeCreated = System.currentTimeMillis() / 1000L;

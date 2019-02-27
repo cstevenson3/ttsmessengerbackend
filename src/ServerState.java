@@ -9,6 +9,16 @@ public class ServerState {
 		rooms = new HashMap<String, Room>();
 	}
 	
+	public static boolean roomExists(String urlName){
+		if(rooms.containsKey(urlName)){
+			return true;
+		}
+		if(VirtualFileSystem.fileExists(Room.getDirectory(urlName))){
+			return true;
+		}
+		return false;
+	}
+	
 	public static Room retrieveRoom(String urlName){
 		if(rooms.containsKey(urlName)){
 			return rooms.get(urlName);

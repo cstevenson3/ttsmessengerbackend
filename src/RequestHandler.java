@@ -1,7 +1,5 @@
 package src;
 
-import groovyjarjarantlr.collections.List;
-
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,15 +18,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Properties;
 
-import javax.sound.sampled.AudioInputStream;
 import javax.xml.ws.http.HTTPException;
 
 import src.SampleEffect.EffectName;
-import marytts.LocalMaryInterface;
-import marytts.MaryInterface;
-import marytts.exceptions.MaryConfigurationException;
-import marytts.exceptions.SynthesisException;
-import marytts.util.data.audio.MaryAudioUtils;
 
 public class RequestHandler implements Runnable{
 	
@@ -311,24 +303,65 @@ public class RequestHandler implements Runnable{
 		Room room = null;
 		room = ServerState.retrieveRoom(roomName);
 		
-		Message message = new Message();
-		message.basicText = request.body;
-		SampledAudio output = null;
-
-		try {
-			output = TtsWithEffects.ttsWithEffects(message.basicText);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		String username = request.headers.getProperty("User");
+		String roomPassword = request.headers.getProperty("Room-Password");
 		
-		room.addMessage(message, output);
-		room.writeToFile();
+		if(room.accessAllowed(roomPassword, username)){
+			Message message = new Message();
+			message.basicText = request.body;
+			message.username = username;
+			SampledAudio output = null;
 
-		response.setCode(200);
-		response.httpStatusMessage = "Create message ok";
+			try {
+				output = TtsWithEffects.ttsWithEffects(message.basicText);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			
+			room.addMessage(message, output);
+			room.writeToFile();
 
-		verboseOutput += "Room: " + roomName +  "updated, is now \n";
-		verboseOutput += room.toString();
+			response.setCode(200);
+			response.httpStatusMessage = "Create message ok";
+
+			verboseOutput += "Room: " + roomName +  "updated, is now \n";
+			verboseOutput += room.toString();
+		}else{
+			response.setCode(401);
+			response.httpStatusMessage = "Room access forbidden";
+		}
+	}
+	
+	private void createRoom(HttpRequest request, HttpResponse response){
+		
+		
+		
+		String roomName = request.headers.getProperty("Room");
+		
+		if(ServerState.roomExists(roomName)){
+			response.setCode(401);
+			response.httpStatusMessage = "Room already exists";
+		}else{
+			ServerState.createRoom(roomName);
+			
+			//optional settings
+			Room room = ServerState.retrieveRoom(roomName);
+			
+			String accessByURLString = request.headers.getProperty("Room-Access-By-URL");
+			boolean accessByURL = Boolean.parseBoolean(accessByURLString);
+			room.setAccessByURL(accessByURL);
+			
+			String accessByPasswordString = request.headers.getProperty("Room-Access-By-Password");
+			boolean accessByPassword = Boolean.parseBoolean(accessByPasswordString);
+			room.setAccessByPassword(accessByPassword);
+			
+			String password = request.headers.getProperty("Room-Password");
+			room.setPassword(password);
+			
+			response.setCode(200);
+			response.httpStatusMessage = "OK";
+			response.addHeader("Room", roomName);
+		}
 	}
 	
 	private void getMessage(HttpRequest request, HttpResponse response){
@@ -341,6 +374,15 @@ public class RequestHandler implements Runnable{
 
 			Room room = null;
 			room = ServerState.retrieveRoom(roomString);
+			String user = request.headers.getProperty("User");
+			String roomPassword = request.headers.getProperty("Room-Password");
+			//System.out.println(roomPassword);
+			if(!room.accessAllowed(roomPassword, user)){
+				response.setCode(401);
+				response.httpStatusMessage = "forbidden";
+				response.headers.setProperty("Get-Message-Response", "forbidden");
+				return;
+			}
 					
 			String messageIndexString = request.headers.getProperty("Message-Index");
 			if (messageIndexString == null){
@@ -378,6 +420,9 @@ public class RequestHandler implements Runnable{
 			break;
 		case "getMessage":
 			getMessage(request, response);
+			break;
+		case "createRoom":
+			createRoom(request, response);
 			break;
 		default:
 			throw new HTTPException(404);

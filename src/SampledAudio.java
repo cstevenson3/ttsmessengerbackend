@@ -2,9 +2,10 @@ package src;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 
-public class SampledAudio {
+public class SampledAudio implements Serializable{
 	@Override
 	public String toString() {
 		return "SampledAudio [sampleRate=" + sampleRate + ", numChannels="

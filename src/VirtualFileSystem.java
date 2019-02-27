@@ -174,4 +174,8 @@ public class VirtualFileSystem {
 		}
 		return result;
 	}
+
+	public static boolean fileExists(String directory) {
+		return new File(directory).exists();
+	}
 }

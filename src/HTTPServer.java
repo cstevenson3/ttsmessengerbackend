@@ -156,6 +156,8 @@ public class HTTPServer {
 		//w.read();
 		//System.out.println(w.toString());
 		
+		ServerState.createRoom("welcome");
+		ServerState.retrieveRoom("welcome").setAccessByURL(true);
 		server();
 		
 		//System.out.println(RequestHandler.preprocessText("The<> name of *Kelvin* Qi Gong is *dumb* like him *woo*"));
@@ -204,6 +206,5 @@ public class HTTPServer {
 		Message retrieved2 = (Message) VirtualFileSystem.retrieve("doesntexist.ser");
 		System.out.println(retrieved2==null);
 		*/
-		
 	}
 }
