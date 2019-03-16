@@ -18,8 +18,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Properties;
 
+import javax.swing.text.DefaultStyledDocument.ElementSpec;
 import javax.xml.ws.http.HTTPException;
 
+import src.Authentication.UserAlreadyExistsException;
 import src.SampleEffect.EffectName;
 
 public class RequestHandler implements Runnable{
@@ -142,162 +144,6 @@ public class RequestHandler implements Runnable{
 		return response;
 	}
 	
-	public static double clamp(double val, double min, double max) {
-	    return Math.max(min, Math.min(max, val));
-	}
-	
-	private static String asteriskToMark(String input, int startIndex){
-		for (int i = 0; i < input.length(); i++){
-			if (input.charAt(i) == "*".charAt(0)){
-				String before = input.substring(0, i);
-				String after = input.substring(i + 1, input.length());
-				String result = before + "<mark name=\"" + "asterisk" + startIndex + "\"/>" + asteriskToMark(after, startIndex + 1);
-				return result;
-			}
-		}
-		return input;
-	}
-	
-	private static String atToMark(String input, int startIndex){
-		for (int i = 0; i < input.length(); i++){
-			if (input.charAt(i) == "@".charAt(0)){
-				String before = input.substring(0, i);
-				String after = input.substring(i + 1, input.length());
-				String result = before + "<mark name=\"" + "at" + startIndex + "\"/>" + atToMark(after, startIndex + 1);
-				return result;
-			}
-		}
-		return input;
-	}
-	
-	public static String preprocessText(String text){
-		System.out.println("Start text:");
-		System.out.println(text);
-		//remove < and >
-		String temp1 = text.replace("<", "");
-		String temp2 = temp1.replace(">", "");
-		
-		//replace asterix with <mark name="asterisk#"/>
-		
-		String temp3 = asteriskToMark(temp2, 0);
-		
-		//replace @ with <mark name="at#"/>
-		
-		String temp4 = atToMark(temp3, 0);
-		
-		//append "end" mark to end of synthesis
-		String result = temp4 + "<mark name=\"end\"/>";
-		
-		System.out.println("Result text:");
-		System.out.println(result);
-		return result;
-	}
-	
-	private static void processEffects(SampledAudio input, String timingsPath){
-		File timingsDir = new File(WEB_ROOT, timingsPath);
-		Properties timings = new Properties();
-		try {
-			timings.load(new FileInputStream(timingsDir));
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		double endTime = Double.parseDouble(timings.getProperty("end"));
-		int sampleLength = input.samples.length;
-		
-		double samplesPerTime = sampleLength / endTime;
-		//System.out.println("Samples per time: " + samplesPerTime);
-		
-		//multiply time by samplesPerTime to get sample range
-		/*
-		for(int i = (int) ((1.0/3.0) * samplesPerTime); i < (int) ((2.0/3.0) * samplesPerTime); i++){
-			if (i >= input.samples.length){
-				break;
-			}
-			input.samples[i] = clamp(input.samples[i] * 1000, -1, 1);
-			input.samples[i] = input.samples[i] / 100;
-		}
-		*/
-		//go through asterisk keys until not found
-		ArrayList<SampleEffect> effects = new ArrayList<SampleEffect>();
-		
-		double startTimeTemp = 0;
-		int index = 0;
-		String value = "";
-		while ((value = timings.getProperty("asterisk" + index)) != null){
-			if ((index % 2) == 0){
-				startTimeTemp = Double.parseDouble(value);
-			}else{
-				SampleEffect ow = new SampleEffect();
-				ow.startTime = startTimeTemp;
-				ow.endTime = Double.parseDouble(value);
-				ow.effect = EffectName.LOUD;
-				effects.add(ow);
-			}
-			index++;
-		}
-		
-		for (SampleEffect effect : effects){
-			switch(effect.effect){
-			case LOUD:
-				System.out.println("Applying loud effect from " + effect.startTime + " to " + effect.endTime);
-				for(int i = (int) (effect.startTime * samplesPerTime); i < (int) (effect.endTime * samplesPerTime); i++){
-					if (i >= input.samples.length){
-						break;
-					}
-					input.samples[i] = clamp(input.samples[i] * 100, -1, 1);
-					input.samples[i] = input.samples[i] / 2;
-				}
-				break;
-			default:
-				System.out.println("Effect not recognised");
-				break;
-			}
-			
-		}
-		
-		// insert thenword
-		
-		SampledAudio thenword = null;
-		try {
-			File thenwordDir = new File("../ttsdata/content/thenword.wav");
-			thenword = TextToSpeechInterface.wavToSampledAudio(thenwordDir.getCanonicalPath());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		ArrayList<SampleEffect> effects2 = new ArrayList<SampleEffect>();
-		
-		int index2 = 0;
-		String value2 = "";
-		while ((value2 = timings.getProperty("at" + index2)) != null){
-			SampleEffect ow = new SampleEffect();
-			ow.startTime = Double.parseDouble(value2);
-			ow.effect = EffectName.INSERT_THE_N_WORD;
-			effects2.add(ow);
-			index2++;
-		}
-		
-		for (SampleEffect effect : effects2){
-			switch(effect.effect){
-			case INSERT_THE_N_WORD:
-				System.out.println("Applying thenword effect from " + effect.startTime);
-				SampledAudio newInput = input.insertOtherSampledAudio(effect.startTime, thenword);
-				input.samples = newInput.samples;
-				input.bits = newInput.bits;
-				input.numChannels = newInput.numChannels;
-				input.sampleRate = newInput.sampleRate;
-				input.numFrames = newInput.numFrames;
-				break;
-			default:
-				System.out.println("Effect not recognised");
-				break;
-			}
-		}
-	}
-	
 	private void createMessage(HttpRequest request, HttpResponse response){
 		String roomName = request.headers.getProperty("Room");
 		Room room = null;
@@ -322,45 +168,83 @@ public class RequestHandler implements Runnable{
 			room.writeToFile();
 
 			response.setCode(200);
-			response.httpStatusMessage = "Create message ok";
+			response.httpStatusMessage = "success";
 
 			verboseOutput += "Room: " + roomName +  "updated, is now \n";
 			verboseOutput += room.toString();
 		}else{
 			response.setCode(401);
-			response.httpStatusMessage = "Room access forbidden";
+			response.httpStatusMessage = "room access denied";
 		}
 	}
 	
 	private void createRoom(HttpRequest request, HttpResponse response){
 		
-		
-		
 		String roomName = request.headers.getProperty("Room");
+		String roomPassword = request.headers.getProperty("Room-Password");
+		String username = request.headers.getProperty("User");
+
+		String accessByURLString = request.headers.getProperty("Room-Access-By-URL");
+		String accessByPasswordString = request.headers.getProperty("Room-Access-By-Password");
+
+		response.addHeader("User", username);
+		response.addHeader("Room", roomName);
+		response.addHeader("Room-Password", roomPassword);
+		response.addHeader("Room-Access-By-URL", accessByURLString);
+		response.addHeader("Room-Access-By-Password", accessByPasswordString);
 		
 		if(ServerState.roomExists(roomName)){
 			response.setCode(401);
-			response.httpStatusMessage = "Room already exists";
+			response.httpStatusMessage = "room already exists";
 		}else{
-			ServerState.createRoom(roomName);
+			if(username == null || username.equals("")){
+				ServerState.createRoom(roomName);
+			}else{
+				ServerState.createRoom(roomName, username);
+			}
 			
 			//optional settings
 			Room room = ServerState.retrieveRoom(roomName);
 			
-			String accessByURLString = request.headers.getProperty("Room-Access-By-URL");
 			boolean accessByURL = Boolean.parseBoolean(accessByURLString);
 			room.setAccessByURL(accessByURL);
 			
-			String accessByPasswordString = request.headers.getProperty("Room-Access-By-Password");
 			boolean accessByPassword = Boolean.parseBoolean(accessByPasswordString);
 			room.setAccessByPassword(accessByPassword);
-			
-			String password = request.headers.getProperty("Room-Password");
-			room.setPassword(password);
+			room.setPassword(roomPassword);
 			
 			response.setCode(200);
-			response.httpStatusMessage = "OK";
-			response.addHeader("Room", roomName);
+			response.httpStatusMessage = "success";
+		}
+	}
+
+	private void createUser(HttpRequest request, HttpResponse response){
+		String username = request.headers.getProperty("New-User");
+		String password = request.headers.getProperty("User-Password");
+		try{
+			Authentication.addUser(username, password);
+			response.setCode(200);
+			response.httpStatusMessage = "success";
+			response.addHeader("User", username);
+			response.addHeader("User-Password", password);
+		}catch(UserAlreadyExistsException e){
+			response.setCode(401);
+			response.httpStatusMessage = "user already exists";
+		}
+	}
+
+	private void addUserToRoom(HttpRequest request, HttpResponse response){
+		String roomString = request.headers.getProperty("Room");
+		String userString = request.headers.getProperty("User");
+		String newUser = request.headers.getProperty("newUser");
+		Room room = ServerState.retrieveRoom(roomString);
+		try{
+			room.addUser(userString, newUser);
+			response.setCode(200);
+			response.httpStatusMessage = "OK Room " + roomString + " accepted adding user " + newUser;
+		}catch(Exception e){
+			response.setCode(401);
+			response.httpStatusMessage = "Room " + roomString + " denied adding user " + newUser;
 		}
 	}
 	
@@ -404,7 +288,7 @@ public class RequestHandler implements Runnable{
 					response.useFileBody = false;
 					response.setCode(200);
 					verboseOutput += "getMessage found a message\n";
-					response.httpStatusMessage = "getMessage found a message";
+					response.httpStatusMessage = "success";
 					response.headers.setProperty("Get-Message-Response", "success");
 					response.headers.setProperty("Audio", message.audioPath);
 					response.headers.setProperty("Message-Index", messageIndexString);
@@ -413,19 +297,77 @@ public class RequestHandler implements Runnable{
 		}
 	}
 	
+	private void loginUser(HttpRequest request, HttpResponse response){
+		String username = request.headers.getProperty("User");
+		String password = request.headers.getProperty("User-Password");
+		if(Authentication.verifyPassword(username, password)){
+			response.setCode(200);
+			response.httpStatusMessage = "success";
+			response.addHeader("User", username);
+			response.addHeader("User-Password", password);
+		}else{
+			response.setCode(401);
+			response.httpStatusMessage = "user authentication failure";
+			response.addHeader("User", username);
+			response.addHeader("User-Password", password);
+		}
+	}
+
+	private void addRoomToUser(HttpRequest request, HttpResponse response){
+		String username = request.headers.getProperty("User");
+		String password = request.headers.getProperty("User-Password");
+		String roomName = request.headers.getProperty("Room");
+		String roomPassword = request.headers.getProperty("Room-Password");
+		User user = (User)VirtualFileSystem.retrieve(User.getDirectory(username));
+		if(user == null){
+			response.setCode(401);
+			response.httpStatusMessage = "user not found";
+		}else{
+			Room room = ServerState.retrieveRoom(roomName);
+			if(room.accessAllowed(roomPassword, username)){
+				user.roomsJoined.add(roomName);
+				response.setCode(200);
+				response.httpStatusMessage = "success";
+			}else{
+				response.setCode(401);
+				response.httpStatusMessage = "room access denied";
+			}
+		}
+		response.addHeader("User", username);
+		response.addHeader("User-Password", password);
+		response.addHeader("Room", roomName);
+		if(roomPassword!=null) {
+			response.addHeader("Room-Password", roomPassword);
+		}else{
+			response.addHeader("Room-Password", "");
+		}
+	}
+
 	private void runCommand(String command, HttpRequest request, HttpResponse response){
 		switch(command){
-		case "createMessage":
-			createMessage(request, response);
-			break;
-		case "getMessage":
-			getMessage(request, response);
-			break;
-		case "createRoom":
-			createRoom(request, response);
-			break;
-		default:
-			throw new HTTPException(404);
+			case "createMessage":
+				createMessage(request, response);
+				break;
+			case "getMessage":
+				getMessage(request, response);
+				break;
+			case "createRoom":
+				createRoom(request, response);
+				break;
+			case "createUser":
+				createUser(request, response);
+				break;
+			case "addUserToRoom":
+				addUserToRoom(request, response);
+				break;
+			case "addRoomToUser":
+				addRoomToUser(request, response);
+				break;
+			case "loginUser":
+				loginUser(request, response);
+				break;
+			default:
+				throw new HTTPException(404);
 		}
 	}
 	
@@ -448,54 +390,46 @@ public class RequestHandler implements Runnable{
 			}
 		}
 		return response;
-		/*
-		String file = request.fileRequested;
-		switch(file){
-		case "/command":
-			verboseOutput += "POST command\n";
-			String[] body = request.body.split("\r\n?|\n");
-			if (body.length == 0){
-				//malformed request 400
-				response.setCode(400);
-				verboseOutput += "POST indicated command but no body was found\n";
-				response.httpStatusMessage = "POST indicated command but no body was found";
-			}else{
-				try{
-					runCommand(body);
-					response.setCode(200);
-					verboseOutput += "POST ran command with no exceptions\n";
-					response.httpStatusMessage = "POST ran command with no exceptions";
-				}catch(HTTPException e){
-					response.setCode(e.getStatusCode());
-					response.autofillMessage();
-				}
-			}
-			break;
-		default:
-			System.out.println(request.fileRequested);
-			verboseOutput += "POST file not recognised\n";
-			//return 404
-			response.setCode(404);
-			response.httpStatusMessage = "POST file not recognised";
-		}
-		response.addHeader("Server", "cstevenson3");
-		response.addHeader("Date", (new Date()).toString());
-		*/
 	}
 	
 	private void handleRequest(HttpRequest request, PrintWriter headerOut, BufferedOutputStream dataOut){
-		HttpResponse response = null;
-		switch(request.httpMethod){
-			case "GET":
-				response = handleGetRequest(request);
-				break;
-			case "POST":
-				response = handlePostRequest(request);
-				break;
-			default:
-				verboseOutput += "Unsupported header requested\n";
-				break;
+
+		HttpResponse response = new HttpResponse();
+
+		String username = request.headers.getProperty("User");
+		String password = request.headers.getProperty("User-Password");
+
+		//System.out.println(username + " and " + password);
+
+		boolean correctPassword = false;
+		if (username==null||username.equals("no-user")||username.equals("")){
+			correctPassword = true;
+		}else{
+			if (password == null){
+				correctPassword = false;
+			}else{
+				correctPassword = Authentication.verifyPassword(username, password);
+			}
 		}
+		if (!correctPassword){
+			response.setCode(401);
+			response.httpStatusMessage = "user authentication failure";
+			response.addHeader("User", username);
+			response.addHeader("User-Password", password);
+		}else{
+			switch(request.httpMethod){
+				case "GET":
+					response = handleGetRequest(request);
+					break;
+				case "POST":
+					response = handlePostRequest(request);
+					break;
+				default:
+					verboseOutput += "Unsupported header requested\n";
+					break;
+			}
+		}
+		
 		try {
 			response.outputResponse(headerOut, dataOut);
 		} catch (IOException e) {

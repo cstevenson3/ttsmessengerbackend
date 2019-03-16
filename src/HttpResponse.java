@@ -35,6 +35,9 @@ public class HttpResponse extends HttpMessage{
 	}
 	
 	public void addHeader(String key, String value){
+		if(value==null){
+			value = "";
+		}
 		headers.setProperty(key, value);
 	}
 	

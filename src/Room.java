@@ -27,6 +27,7 @@ public class Room implements Serializable{
 		editMutex = new Semaphore(1);
 		messages = new ArrayList<Message>();
 		users = new ArrayList<String>();
+		System.out.println("Called new room");
 	}
 	
 	private void acquireMutex(Semaphore mutex){
@@ -66,6 +67,7 @@ public class Room implements Serializable{
 		acquireMutex(editMutex);
 		this.urlName = urlName;
 		releaseMutex(editMutex);
+		System.out.println("Called set url name");
 	}
 	
 	public boolean userAllowed(String username){
@@ -73,8 +75,10 @@ public class Room implements Serializable{
 	}
 	
 	public boolean accessAllowed(String password, String user){
-		//ßSystem.out.println(this.toString());
-		
+		//System.out.println(this.toString());
+		for(String username : users){
+			System.out.println(username);
+		}
 		if(accessByURL){
 			return true;
 		}else{
@@ -137,6 +141,19 @@ public class Room implements Serializable{
 		*/
 		
 	}
+
+	public void addUser(String allowedUser, String newUser) throws Exception{
+		if (users.contains(allowedUser)){
+			users.add(newUser);
+		}else{
+			throw new Exception();
+		}
+	}
+
+	public void addFirstUser(String newUser){
+		users.add(newUser);
+		System.out.println("Called add first user");
+	}
 	
 	public void writeToFile(){
 		acquireMutex(editMutex);
@@ -179,7 +196,7 @@ public class Room implements Serializable{
 
 	public static String getDirectory(String urlName) {
 		try {
-			return RequestHandler.WEB_ROOT.getCanonicalPath() + "/audio/" + urlName + "/" + urlName + ".ser";
+			return RequestHandler.WEB_ROOT.getCanonicalPath() + "/rooms/" + urlName + "/" + urlName + ".ser";
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

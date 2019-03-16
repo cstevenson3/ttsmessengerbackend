@@ -15,6 +15,7 @@ public class TtsWithEffects {
 				throw e;
 			}
 		}
+		System.out.println(tts);
 		SampledAudio result = EffectsAdder.addBasicEffects(tts);
 		return result;
 	}

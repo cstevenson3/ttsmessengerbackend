@@ -51,4 +51,19 @@ public class ServerState {
 		rooms.put(urlName, room);
 		room.writeToFile();
 	}
+
+	public static void createRoom(String urlName, String username){
+		Room room = new Room();
+		room.setUrlName(urlName);
+		room.setDisplayName("New room");
+		room.addFirstUser(username);
+		rooms.put(urlName, room);
+		room.writeToFile();
+	}
+
+	public static void clearLocalStorage(){
+		VirtualFileSystem.deleteDirectory("../ttsmessenger/rooms/");
+		VirtualFileSystem.deleteDirectory("../ttsdata/users/");
+		VirtualFileSystem.deleteDirectory("../ttsdata/ttscache");
+	}
 }

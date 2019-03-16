@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
@@ -138,6 +139,7 @@ public class IBMTextToSpeech {
 	private ByteArrayOutputStream audio = new ByteArrayOutputStream();
 	
 	public void timestampedTtsToWav(String audioPath, String timingsPath, String text){
+		
 		try {
 			responseMutex.acquire();
 		} catch (InterruptedException e2) {
@@ -291,8 +293,73 @@ public class IBMTextToSpeech {
 	}
 
 	
+	public static ArrayList<String> textToMarkNames(String text){
+		ArrayList<String> result = new ArrayList<String>();
+		String markTemplateStart = "<mark name=\"";
+		String markTemplateEnd = "\"";
+		for(int i = 0; i<text.length()-markTemplateStart.length()-markTemplateEnd.length(); i++){
+			if(markTemplateStart.equals(text.substring(i, i+markTemplateStart.length()))){
+				//scan till markTemplateEnd is found
+				String markName = "";
+				int scanIndex = i + markTemplateStart.length();
+				while(scanIndex + markTemplateEnd.length()-1<text.length()&&!(markTemplateEnd.equals(text.subSequence(scanIndex, scanIndex + markTemplateEnd.length())))){
+					markName += text.substring(scanIndex, scanIndex + 1);
+					scanIndex ++;
+				}
+				//check mark name is valid
+				if(markName.equals("")){
+
+				}else{
+					result.add(markName);
+				}
+			}
+		}
+		return result;
+	}
+
 	Properties marks;
 	public MarkedAudio timestampedTtsToMarkedAudio(String text) throws Exception {
+		//check if text is empty w.r.t. speech synthesis
+		boolean textEmpty = true;
+		int angleBracketCounter = 0;
+		for(char c:text.toCharArray()){
+			if(c=="<".charAt(0)){
+				angleBracketCounter++;
+				continue;
+			}
+			if(c==">".charAt(0)){
+				angleBracketCounter--;
+				continue;
+			}
+			if(angleBracketCounter==0){
+				textEmpty = false;
+				break;
+			}
+		}
+		
+
+		if(textEmpty){
+			//return empty single channel sound
+			SampledAudio empty = new SampledAudio();
+			empty.sampleRate = SAMPLE_RATE;
+			empty.samples = new double[0];
+			empty.bits = 16;
+			empty.numChannels = 1;
+			empty.numFrames = 0;
+
+			double separation = 0.001;
+			Properties zeroMarks = new Properties();
+			for(String markName:textToMarkNames(text)){
+				zeroMarks.put(markName, String.valueOf(separation));
+				separation += 0.001; //separate each mark very slightly to maintain their order when effects are added
+			}
+
+			MarkedAudio result = new MarkedAudio();
+			result.marks = zeroMarks;
+			result.sa = empty;
+			return result;
+		}
+
 		marks = new Properties();
 		try {
 			responseMutex.acquire();
