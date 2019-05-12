@@ -1,9 +1,12 @@
-package src;
+package src.audio;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
+
+import src.audio.util.WavFile;
+import src.webserver.VirtualFileSystem;
 
 public class SampledAudio implements Serializable{
 	@Override

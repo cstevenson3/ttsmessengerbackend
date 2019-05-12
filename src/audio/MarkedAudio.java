@@ -1,4 +1,4 @@
-package src;
+package src.audio;
 
 import java.io.Serializable;
 import java.util.Properties;

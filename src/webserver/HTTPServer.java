@@ -1,8 +1,7 @@
-package src;
+package src.webserver;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.ArrayList;
 
 public class HTTPServer {
 
@@ -37,18 +36,5 @@ public class HTTPServer {
 		ServerState.createRoom("welcome");
 		ServerState.retrieveRoom("welcome").setAccessByURL(true);
 		server();
-		
-		/*
-		IBMTextToSpeech ibm = new IBMTextToSpeech();
-		MarkedAudio ma = null;
-		try{
-			ma = ibm.timestampedTtsToMarkedAudio("<mark name=\"hello\"><mark name=\"hello2\">");
-		}catch(Exception e){
-
-		}
-		for (String key:ma.marks.stringPropertyNames()){
-			System.out.println(key + " " + ma.marks.getProperty(key));
-		}
-		*/
 	}
 }

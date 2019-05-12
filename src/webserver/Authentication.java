@@ -1,9 +1,7 @@
-package src;
+package src.webserver;
 
-import java.io.Serializable;
-
-import src.PasswordHashing.CannotPerformOperationException;
-import src.PasswordHashing.InvalidHashException;
+import src.webserver.PasswordHashing.CannotPerformOperationException;
+import src.webserver.PasswordHashing.InvalidHashException;
 
 public class Authentication {	
 	public class UserAlreadyExistsException extends Exception{

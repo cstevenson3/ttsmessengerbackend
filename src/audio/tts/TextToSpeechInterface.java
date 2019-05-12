@@ -1,4 +1,4 @@
-package src;
+package src.audio.tts;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,6 +11,9 @@ import marytts.MaryInterface;
 import marytts.exceptions.MaryConfigurationException;
 import marytts.exceptions.SynthesisException;
 import marytts.util.data.audio.MaryAudioUtils;
+import src.audio.MarkedAudio;
+import src.audio.SampledAudio;
+import src.audio.util.WavFile;
 
 public class TextToSpeechInterface {
 	

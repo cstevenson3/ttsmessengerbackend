@@ -21,7 +21,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // =================================================================                                                                   
 
-package src;
+package src.audio.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

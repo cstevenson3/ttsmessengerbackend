@@ -1,9 +1,11 @@
-package src;
+package src.webserver;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
+
+import src.audio.SampledAudio;
 
 public class Room implements Serializable{
 	

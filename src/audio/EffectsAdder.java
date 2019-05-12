@@ -1,7 +1,9 @@
-package src;
+package src.audio;
 
 import java.util.ArrayList;
 import java.util.Properties;
+
+import src.audio.tts.TextToSpeechInterface;
 
 public class EffectsAdder {
 
@@ -77,7 +79,7 @@ public class EffectsAdder {
 	}
 	
 	private static ArrayList<SampleEffect> marksToSampleEffects(Properties marks){
-		ArrayList<SampleEffect> se1 = findPointMarks(marks, "at", SampleEffect.EffectName.INSERT_THE_N_WORD);
+		ArrayList<SampleEffect> se1 = findPointMarks(marks, "at", SampleEffect.EffectName.INSERT_EXAMPLE_AUDIO);
 		ArrayList<SampleEffect> se2 = findPairMarks(marks, "asterisk", SampleEffect.EffectName.LOUD);
 		se1.addAll(se2);
 		return se1;
@@ -109,10 +111,10 @@ public class EffectsAdder {
 					sa.samples[i] = sa.samples[i] / 2;
 				}
 				break;
-			case INSERT_THE_N_WORD:
-				SampledAudio thenword = TextToSpeechInterface.wavToSampledAudio("../ttsdata/content/thenword.wav");
-				sa = sa.insertOtherSampledAudio(effectAccumulator.originalTimeToNewTime(se.startTime), thenword).clone();
-				resultingChangeInTime = thenword.getDuration();
+			case INSERT_EXAMPLE_AUDIO:
+				SampledAudio exampleAudio = TextToSpeechInterface.wavToSampledAudio("../ttsdata/content/exampleAudio.wav");
+				sa = sa.insertOtherSampledAudio(effectAccumulator.originalTimeToNewTime(se.startTime), exampleAudio).clone();
+				resultingChangeInTime = exampleAudio.getDuration();
 				
 				break;
 			default:

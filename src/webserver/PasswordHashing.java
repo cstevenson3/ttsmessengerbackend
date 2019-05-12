@@ -1,4 +1,4 @@
-package src;
+package src.webserver;
 
 import java.security.SecureRandom;
 import javax.crypto.spec.PBEKeySpec;

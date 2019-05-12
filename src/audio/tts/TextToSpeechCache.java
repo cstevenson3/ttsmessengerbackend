@@ -1,4 +1,4 @@
-package src;
+package src.audio.tts;
 
 import java.io.File;
 import java.io.Serializable;
@@ -6,6 +6,9 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.concurrent.Semaphore;
+
+import src.audio.MarkedAudio;
+import src.webserver.VirtualFileSystem;
 
 public class TextToSpeechCache {
 	//stores the results of tts requests to minimise bandwidth and API usage

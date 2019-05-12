@@ -1,4 +1,7 @@
-package src;
+package src.audio;
+
+import src.audio.tts.TextToSpeechCache;
+import src.audio.tts.TextToSpeechInterface;
 
 public class TtsWithEffects {
 	public static SampledAudio ttsWithEffects(String text) throws Exception{

@@ -1,4 +1,4 @@
-package src;
+package src.audio.tts;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -19,6 +19,9 @@ import java.util.concurrent.Semaphore;
 import org.apache.commons.io.FileUtils;
 
 import okhttp3.WebSocket;
+import src.audio.MarkedAudio;
+import src.audio.SampledAudio;
+import src.audio.util.wavIO;
 
 import com.ibm.watson.developer_cloud.service.security.IamOptions;
 import com.ibm.watson.developer_cloud.text_to_speech.v1.TextToSpeech;

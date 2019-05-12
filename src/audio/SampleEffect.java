@@ -1,4 +1,4 @@
-package src;
+package src.audio;
 
 public class SampleEffect{
 	public double startTime;
@@ -17,6 +17,6 @@ public class SampleEffect{
 	}
 	
 	public enum EffectName {
-	    NONE, LOUD, INSERT_THE_N_WORD
+	    NONE, LOUD, INSERT_EXAMPLE_AUDIO
 	}
 }

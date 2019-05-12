@@ -1,4 +1,4 @@
-package src;
+package src.audio.util;
 
 // Wav file IO class
 // A.Greensted

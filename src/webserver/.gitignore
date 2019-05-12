@@ -1,0 +1,16 @@
+/Authentication$UserAlreadyExistsException.class
+/Authentication.class
+/HTTPServer.class
+/HttpMessage.class
+/HttpRequest.class
+/HttpResponse.class
+/JavaHTTPServer.class
+/Message.class
+/PasswordHashing$CannotPerformOperationException.class
+/PasswordHashing$InvalidHashException.class
+/PasswordHashing.class
+/RequestHandler.class
+/Room.class
+/ServerState.class
+/User.class
+/VirtualFileSystem.class

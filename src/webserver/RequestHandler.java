@@ -1,4 +1,4 @@
-package src;
+package src.webserver;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -21,8 +21,10 @@ import java.util.Properties;
 import javax.swing.text.DefaultStyledDocument.ElementSpec;
 import javax.xml.ws.http.HTTPException;
 
-import src.Authentication.UserAlreadyExistsException;
-import src.SampleEffect.EffectName;
+import src.audio.SampledAudio;
+import src.audio.TtsWithEffects;
+import src.audio.SampleEffect.EffectName;
+import src.webserver.Authentication.UserAlreadyExistsException;
 
 public class RequestHandler implements Runnable{
 	

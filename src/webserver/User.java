@@ -1,4 +1,4 @@
-package src;
+package src.webserver;
 
 import java.io.Serializable;
 import java.util.ArrayList;
